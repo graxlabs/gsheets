@@ -232,7 +232,7 @@ function refreshAllGRAXData(){
 // Add GRAX Menu Options
 function onOpen(e) {
   var ui = SpreadsheetApp.getUi();
-  ui.createMenu("GRAX Data 👉️")
+  ui.createMenu("GRAX Data 🚀")
     .addItem("Refresh All GRAX Data", "refreshAllGRAXData")
     .addItem("Refresh GRAX Snapshots", "refreshAllSnapshots")
     .addItem("Refresh GRAX Object Searches", "refreshAllSearchData")
