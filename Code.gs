@@ -1,7 +1,12 @@
 const APIName = 'https://EXAMPLE.secure.grax.io/';
 const APIToken = '<REDACTED>';
-const GRAXListName = 'GRAX_DATA_LIST';
-const GRAXDemoName = 'GRAX_DEMO';
+
+const SnapshotTabName = 'GRAX_Snapshots';
+const SearchTabName = 'GRAX_Searches';
+const GRAXSegmentKeyName = 'Snapshot Date';
+
+var Object_Counter = 0;
+
 const timezone = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
 
 function getHeader(method){
@@ -37,7 +42,14 @@ function getGRAXSearches() {
   return getReturnData(obj.searches);
 }
 
-function executeSearch(objectName,dateField,timeFrom,timeTo,status){
+// getSearchStatus('MeAyKMuMmM9PY8zffFEC6C');
+function getSearchStatus(searchId){
+  var obj = getAPIData('api/v2/searches/' + searchId, 'get');
+  return obj['status'];
+}
+
+// executeSearch("Case","createdAt","2024-03-01T04:00:00Z","2024-03-14T05:00:00Z","live");
+function executeSearch(objectName,dateField,timeFrom,timeTo,status,filter){
   var options = getHeader('post');
   var payload = {
     'object': objectName,
@@ -45,12 +57,34 @@ function executeSearch(objectName,dateField,timeFrom,timeTo,status){
     'timeField': dateField,
     'timeFieldMax': timeTo,
     'timeFieldMin': timeFrom
+  };
+
+  if (filter != null){
+    payload.filters={
+      "mode":"and",
+      "fields" : [
+        filter
+      ]
+    }
   }
+
   options.payload = JSON.stringify(payload);
+  Logger.log(options.payload);
+  displayAlert('Retrieving GRAX History for ' + objectName + ' ' + timeFrom + ' to ' + timeTo);
   var response = UrlFetchApp.fetch(APIName + 'api/v2/searches',options);
   var data = JSON.parse(response.getContentText());
-  Logger.log("Search Id: " + data.id);
   return data.id; 
+}
+
+function executeSearchAndWait(objectName,dateField,timeFrom,timeTo,status,filter){
+  var searchId = executeSearch(objectName,dateField,timeFrom,timeTo,status,filter);
+  var searchStatus = getSearchStatus(searchId);
+  Utilities.sleep(1000);
+  while(searchStatus!='success'){
+    Utilities.sleep(1000);
+    searchStatus = getSearchStatus(searchId);
+  }
+  return searchId;
 }
 
 function getSearchCsv(searchId,fields){
@@ -65,48 +99,102 @@ function getSearchCsv(searchId,fields){
   return csvData;
 }
 
-function getSearchData(searchId){
-  var response = UrlFetchApp.fetch(APIName + 'api/v2/searches/' + searchId + '/download?latest=true&fields=Id', getHeader('get'));
-  var unZippedfile = Utilities.unzip(response);
-  var blob = unZippedfile[1];
-  var csvData = Utilities.parseCsv(blob.getDataAsString());
-  const header = Object.keys(csvData[0])
-  const values = csvData.map(Object.values);
-  values.unshift(header);
-  return values;
+function downloadSearchData(searchId){
+  var response = null;
+  try{
+    response = UrlFetchApp.fetch(APIName + 'api/v2/searches/' + searchId + '/download?latest=true&fields=Id', getHeader('get'));
+  }catch(exception){
+    displayAlert('Exception: ' + exception.toString());
+  }
+  return response;
 }
 
-//@OnlyCurrentDoc
-function onOpen(e) {
-  var ui = SpreadsheetApp.getUi();
-  ui.createMenu("GRAX Data 👉️")
-    .addItem("Refresh All GRAX Data", "refreshAllSearchData")
-    .addToUi();
+// ----------------------------------------------------------------
+function getFilter(filterField,filterType,filterValue){
+  var filter = 
+    {
+      "field" : filterField.toString(),
+      "filterType" : filterType.toString(),
+      "not":false,
+      "value" : filterValue.toString()
+    };
+
+  if (filterField!=null && filterField!='')  
+   return filter;
+  else
+    return null;
 }
 
-//Displays an alert as a Toast message
-function displayToastAlert(message) {
-  SpreadsheetApp.getActive().toast(message + "\n\nContact sales@grax.com with questions.", "GRAX Alert"); 
-}
-
-function getDate(){
-  return Utilities.formatDate(new Date(), timezone, 'M/d/yyyy HH:mm');
-}
-
-function makeListActive(){
-  var ss = SpreadsheetApp.getActive();
-  var listSheet = ss.getSheetByName(GRAXListName);
-  listSheet.activate();
-  return listSheet;
-}
-
-function refreshAllSearchData() {
-  var ss = SpreadsheetApp.getActive();
-  var listSheet = makeListActive();
-  if (listSheet.getName()==GRAXListName){
-    var data = ss.getDataRange().getValues();
+// refreshAllSnapshots();
+function refreshAllSnapshots() {
+  var listSheet = makeSheetActive(SnapshotTabName);
+  if (listSheet.getName() == SnapshotTabName){
+    var data = listSheet.getDataRange().getValues();
     for(var i = 0; i < data.length; i++){
-      listSheet = makeListActive();
+      if (i!=0){
+        var objectName = data[i][0];
+        var fields = data[i][1];
+        var dateField = data[i][2];
+        var segmentStart = data[i][3];
+        var numberofSegments = data[i][4];
+        var sheetName = data[i][5];
+        var filter = getFilter(data[i][6],data[i][7],data[i][8]);
+        var cumulative = data[i][9];
+        var searchStartDate = data[i][10];
+        if (searchStartDate==null || searchStartDate==''){
+          searchStartDate=segmentStart;
+        }
+        displayAlert('Starting Snapshot:' + objectName + ' segmentStart: ' + segmentStart + ' Sheet Name: ' + sheetName + ' searchStartDate: ' + searchStartDate);
+        runSnapShot(objectName,fields,dateField,segmentStart,numberofSegments,sheetName,filter,cumulative,searchStartDate);
+      }
+    }
+    displayAlert('Successfully Refreshed Snapshot Data.'); 
+  }
+}
+
+function runSnapShot(objectName,fields,dateField,segmentStart,numberofSegments,sheetName,filter,isCumulative,searchStartDate){
+  var startDate = new Date(segmentStart);
+  var endDate = null;
+  var firstDayOfSearch = null;
+  var headers = null;
+  var aggregatedData=null;
+  for(var i=0; i < numberofSegments; i++){
+    if (isCumulative.toString().toLowerCase()=="true"){
+      firstDayOfSearch=new Date(searchStartDate);
+    }else{
+      firstDayOfSearch = new Date(segmentStart.getFullYear(), startDate.getMonth() + i);
+    }
+    endDate = getLastDayOfMonth(new Date(segmentStart.getFullYear(), startDate.getMonth() + i));
+    // Skip Searching History > Last Day of Current Month (FUTURE)
+    if (getLastDayOfMonth(Date.now()) >= getLastDayOfMonth(endDate)){
+      var segmentKey = endDate.toLocaleString('default',{ month: 'long' }) + ' ' + endDate.getFullYear().toString();
+      latestSearchId = executeSearchAndWait(objectName,dateField,firstDayOfSearch.toISOString(),endDate.toISOString(),"live",filter);
+      csvSearchhData=getSearchCsv(latestSearchId,fields);
+      const columnsToRemove = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+      csvSearchhData = removeColumns(csvSearchhData, columnsToRemove);
+      headers = csvSearchhData[0];
+      csvSearchhData.splice(0,1);
+      addColumn(csvSearchhData,headers.length+1,segmentKey);
+      if (aggregatedData==null){
+        headers[headers.length]=GRAXSegmentKeyName;
+        aggregatedData = new Array(headers);
+      }
+      aggregatedData = [].concat(aggregatedData,csvSearchhData);
+    }
+  }
+  var dataSheet = getNewSheet(sheetName);
+  updateSheet(dataSheet,aggregatedData);
+}
+
+// ----------------------------------------------------------------
+// GRAX Search Processing
+// refreshAllSearchData();
+function refreshAllSearchData() {
+  var listSheet = makeSheetActive(SearchTabName);
+  if (listSheet.getName()==SearchTabName){
+    var data = listSheet.getDataRange().getValues();
+    for(var i = 0; i < data.length; i++){
+      listSheet = makeSheetActive(SearchTabName);
       if (i!=0){
         var objectName = data[i][0];
         var fields = data[i][1];
@@ -115,48 +203,119 @@ function refreshAllSearchData() {
         var dateField = data[i][4];
         var status = data[i][5];
         var latestSearchId = data[i][6].toString().trim();
-        if (latestSearchId=="" || latestSearchId==null){
-          displayToastAlert('Executing GRAX search for ' + objectName);
-          latestSearchId = executeSearch(objectName,dateField,dateMin,dateMax,status);
-          ss.getRange('G' + (i+1)).setValue(latestSearchId);
-          ss.getRange('H' + (i+1)).setValue(getDate());
-        }else{
-          Logger.log('Skipping Search Execution (ID Exists) ' + objectName + ' SearchID="' + latestSearchId + '"')
-        }
-        displayToastAlert('Refreshing ' + objectName + ' From Existing Search "' + latestSearchId + '"');
-        var sheetName = 'GRAX_DATA_'+ objectName;
-        var dataSheet = ss.getSheetByName(sheetName);
-        if (dataSheet==null){
-          dataSheet = ss.insertSheet();
-          dataSheet.setName('GRAX_DATA_'+ objectName);
-          SpreadsheetApp.getActive().moveActiveSheet(SpreadsheetApp.getActive().getNumSheets());
-        }else{
-          dataSheet.activate();
-        }
-        dataSheet.clear();
-        var dataSheet = ss.getSheetByName(sheetName);
-        updateSheet(dataSheet,getSearchCsv(latestSearchId,fields));
-
-        listSheet = makeListActive();
-        ss.getRange('I' + (i+1)).setValue(getDate());
+        latestSearchId = executeSearchAndWait(objectName,dateField,dateMin,dateMax,status);
+        listSheet.getRange('G' + (i+1)).setValue(latestSearchId);
+        listSheet.getRange('H' + (i+1)).setValue(getDate());
+        var sheetName = 'GRAX_DATA_'+ objectName + '_' + Object_Counter;
+        var dataSheet = fillSheet(sheetName,latestSearchId,fields);
+        listSheet = makeSheetActive(SearchTabName);
+        listSheet.getRange('I' + (i+1)).setValue(getDate());
+        Object_Counter++;
       }
     }
-    var dataSheet = ss.getSheetByName(GRAXDemoName);
-    dataSheet.activate();
-    displayToastAlert('Successfully Refreshed All GRAX Data.'); 
-  }else{
-      displayToastAlert('Please run from ' + GRAXListName + ' Tab! ' + ss.getName()); 
+    makeSheetActive(SearchTabName);
+    displayAlert('Successfully Refreshed Seach Data.'); 
+  } else {
+      displayAlert('Please run from ' + SearchTabName + ' Tab! ' + ss.getName()); 
   }
+}
+
+// refreshAllGRAXData();
+function refreshAllGRAXData(){
+  refreshAllSnapshots();
+  refreshAllSearchData();
+}
+
+// ------------------------------------------------
+// Google Sheets Helper Functions
+
+// Add GRAX Menu Options
+function onOpen(e) {
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu("GRAX Data 👉️")
+    .addItem("Refresh All GRAX Data", "refreshAllGRAXData")
+    .addItem("Refresh GRAX Snapshots", "refreshAllSnapshots")
+    .addItem("Refresh GRAX Object Searches", "refreshAllSearchData")
+    .addToUi();
+}
+
+function displayAlert(message) {
+  Logger.log(message);
+  SpreadsheetApp.getActive().toast(message, "GRAX Alert"); 
+}
+
+function makeSheetActive(sheetName){
+  var ss = SpreadsheetApp.getActive();
+  var listSheet = ss.getSheetByName(sheetName);
+  listSheet.activate();
+  return listSheet;
+}
+
+function getNewSheet(sheetName){
+  var ss = SpreadsheetApp.getActive();
+  var dataSheet = ss.getSheetByName(sheetName);
+  if (dataSheet==null){
+    dataSheet = ss.insertSheet();
+    dataSheet.setName(sheetName);
+    SpreadsheetApp.getActive().moveActiveSheet(SpreadsheetApp.getActive().getNumSheets());
+  }else{
+    dataSheet.activate();
+    dataSheet.clear();
+  }
+  return dataSheet;
+}
+
+function fillSheet(sheetName,latestSearchId,fields){
+  var dataSheet = getNewSheet(sheetName);
+  updateSheet(dataSheet,getSearchCsv(latestSearchId,fields));
+  return dataSheet;
 }
 
 function updateSheet(sheet,data){
   sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
 }
-
-function writeDataToSheet(data) {
-  var ss = SpreadsheetApp.getActive();
-  sheet = ss.insertSheet();
-  updateSheet(sheet,data);
-  return sheet.getName();
+// ------------------------------------------------
+// Utility Functions
+function getDate(){
+  return Utilities.formatDate(new Date(), timezone, 'M/d/yyyy HH:mm');
 }
+
+function getLastDayOfMonth(date){
+  var currentDate = new Date(date);
+  var lastDayOfMonth =new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23,59);
+  return lastDayOfMonth;
+}
+
+ // Function to remove specified columns
+function removeColumns(array, columnsToRemove) {
+  return array.map(row =>
+    row.filter((_, index) => !columnsToRemove.includes(index))
+  );
+}
+
+function addColumn(array, columnIndex, value) {
+  array.forEach(row => {
+    row.splice(columnIndex, 0, value);
+  });
+}
+
+// ------------------------------------------------
+// Archived Code
+/*
+function getSearchData(searchId){
+  var response = downloadSearchData(searchId);
+  if (response==null){
+    Utilities.sleep(2000);
+    response = downloadSearchData(searchId);
+  }
+  var unZippedfile = Utilities.unzip(response);
+  var blob = unZippedfile[1];
+  var csvData = Utilities.parseCsv(blob.getDataAsString());
+  const header = Object.keys(csvData[0]);
+  const values = csvData.map(Object.values);
+  values.unshift(header);
+  return values;
+}
+*/
+
 
