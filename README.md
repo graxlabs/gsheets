@@ -1,4 +1,4 @@
-# GSheets
+# GRAX Salesforce Historical Snapshots in Google Sheets
 
 This demonstrates how to use GRAX Data APIs to quickly reuse data from Salesforce in Google Sheets for business intelligence.
 
