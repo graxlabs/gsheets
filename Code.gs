@@ -1,5 +1,12 @@
+// -------------------------------------------------
+// ************ CHANGE VALUES HERE *****************
+// APIName = GRAX Application URL (Does not matter where it is hosted)
+
 const APIName = 'https://EXAMPLE.secure.grax.io/';
+
+// APIToken = GRAX Application >> Settings >> API Token Management >> New Token
 const APIToken = '<REDACTED>';
+// -------------------------------------------------
 
 const SnapshotTabName = 'GRAX_Snapshots';
 const SearchTabName = 'GRAX_Searches';
@@ -234,10 +241,11 @@ function onOpen(e) {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu("GRAX Data 🚀")
     .addItem("Refresh All GRAX Data", "refreshAllGRAXData")
-    .addItem("Refresh GRAX Snapshots", "refreshAllSnapshots")
-    .addItem("Refresh GRAX Object Searches", "refreshAllSearchData")
+    .addItem("Refresh Snapshots", "refreshAllSnapshots")
+    .addItem("Refresh Object Searches", "refreshAllSearchData")
+    .addItem("Initialize Demo Searches", "setupSample")
+    .addItem("Run Demo", "runSample")
     .addItem("GRAX Documentation", "documentationPopUp")
-    .addItem("GRAX.com", "websitePopUp")
     .addToUi();
 }
 
@@ -254,16 +262,22 @@ function makeSheetActive(sheetName){
 }
 
 function getNewSheet(sheetName){
+  var dataSheet = getOrCreateSheet(sheetName,true);
+  return dataSheet;
+}
+
+function getOrCreateSheet(sheetName,clear){
   var ss = SpreadsheetApp.getActive();
   var dataSheet = ss.getSheetByName(sheetName);
   if (dataSheet==null){
     dataSheet = ss.insertSheet();
     dataSheet.setName(sheetName);
     SpreadsheetApp.getActive().moveActiveSheet(SpreadsheetApp.getActive().getNumSheets());
-  }else{
-    dataSheet.activate();
+  }
+  if (clear==true){
     dataSheet.clear();
   }
+  dataSheet.activate();
   return dataSheet;
 }
 
@@ -301,6 +315,56 @@ function addColumn(array, columnIndex, value) {
   });
 }
 
+function runSample(){
+  setupSample();
+  refreshAllSnapshots();
+  refreshAllSearchData();
+}
+
+function setupSample(){
+  setupSampleSnapshot();
+  setupSampleSearches();
+  displayAlert('Initialized Searches.'); 
+}
+
+function setupSampleSearches(){
+  initializeSampleFields(SearchTabName,1,"Object Name","Opportunity");
+  initializeSampleFields(SearchTabName,2,"Fields","Id,CloseDate,Amount,StageName,CreatedDate,FiscalQuarter,FiscalYear,Fiscal");
+  initializeSampleFields(SearchTabName,3,"Date Min","2024-01-01T04:00:00Z");
+  initializeSampleFields(SearchTabName,4,"Date Max","2024-03-18T05:00:00Z");
+  initializeSampleFields(SearchTabName,5,"Date Field","modifiedAt");
+  initializeSampleFields(SearchTabName,6,"Status","live");
+  initializeSampleFields(SearchTabName,7,"Latest Search Id","");
+  initializeSampleFields(SearchTabName,8,"Last Search Execution","");
+  initializeSampleFields(SearchTabName,9,"Last Refreshed","");
+}
+
+function setupSampleSnapshot(){
+  initializeSampleFields(SnapshotTabName,1,"Object Name","Opportunity");
+  initializeSampleFields(SnapshotTabName,2,"Fields","Id,CloseDate,Amount,StageName,CreatedDate,FiscalQuarter,FiscalYear,Fiscal");
+  initializeSampleFields(SnapshotTabName,3,"Date Field","modifiedAt");
+  initializeSampleFields(SnapshotTabName,4,"Snapshot Start Date","1/1/2024");
+  initializeSampleFields(SnapshotTabName,5,"Number of Segments","12");
+  initializeSampleFields(SnapshotTabName,6,"Sheet Name","SNAPSHOT_DEMO_DATA");
+  initializeSampleFields(SnapshotTabName,7,"Filter Field","");
+  initializeSampleFields(SnapshotTabName,8,"Filter Type","");
+  initializeSampleFields(SnapshotTabName,9,"Filter Value","");
+  initializeSampleFields(SnapshotTabName,10,"Cumulative","TRUE");
+  initializeSampleFields(SnapshotTabName,11,"Search Start Date","1/1/2023");
+}
+
+function initializeSampleFields(sheetName,column,name,value){
+  var snapshotSheet = getOrCreateSheet(sheetName,false);
+  var data = snapshotSheet.getDataRange().getValues();
+  if(data!=null){
+    if (snapshotSheet.getRange(1,column) != name){
+      snapshotSheet.getRange(1,column).setValue(name);
+      snapshotSheet.getRange(2,column).setValue(value);
+    }
+  }
+  return data;
+}
+
 function openURL(url){
   // var url = 'https://documentation.grax.com/docs/introduction';
   var html = HtmlService.createHtmlOutput('<html><script>'
@@ -329,5 +393,7 @@ function documentationPopUp(){
 function websitePopUp(){
   openURL('https://www.grax.com');
 }
+
+
 
 
