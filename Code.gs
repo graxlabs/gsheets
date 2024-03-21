@@ -253,7 +253,7 @@ function onOpen(e) {
 
 function displayAlert(message) {
   Logger.log(message);
-  SpreadsheetApp.getActive().toast(message, "GRAX Alert"); 
+  SpreadsheetApp.getActive().toast(message, "GRAX Notification"); 
 }
 
 function makeSheetActive(sheetName){
@@ -347,7 +347,7 @@ function setupSampleSnapshot(){
   initializeSampleFields(SnapshotTabName,1,"Object Name","Opportunity");
   initializeSampleFields(SnapshotTabName,2,"Fields","Id,CloseDate,Amount,StageName,CreatedDate,FiscalQuarter,FiscalYear,Fiscal");
   initializeSampleFields(SnapshotTabName,3,"Date Field","modifiedAt");
-  initializeSampleFields(SnapshotTabName,4,"Snapshot Start Date","1/1/2024");
+  initializeSampleFields(SnapshotTabName,4,"Snapshot Start Date","3/1/2023");
   initializeSampleFields(SnapshotTabName,5,"Number of Segments","12");
   initializeSampleFields(SnapshotTabName,6,"Sheet Name","SNAPSHOT_DEMO_DATA");
   initializeSampleFields(SnapshotTabName,7,"Filter Field","");
@@ -409,7 +409,3 @@ function documentationPopUp(){
 function websitePopUp(){
   openURL('https://www.grax.com');
 }
-
-
-
-
