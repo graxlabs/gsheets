@@ -238,15 +238,17 @@ function refreshAllGRAXData(){
 
 // Add GRAX Menu Options
 function onOpen(e) {
-  var ui = SpreadsheetApp.getUi();
-  ui.createMenu("GRAX Data 🚀")
+  //if (validateSetup()){
+    var ui = SpreadsheetApp.getUi();
+    ui.createMenu("GRAX Data 🚀")
     .addItem("Refresh All GRAX Data", "refreshAllGRAXData")
-    .addItem("Refresh Snapshots", "refreshAllSnapshots")
-    .addItem("Refresh Object Searches", "refreshAllSearchData")
-    .addItem("Initialize Demo Searches", "setupSample")
+    .addItem("Refresh Snapshot Data", "refreshAllSnapshots")
+    .addItem("Refresh Search Data", "refreshAllSearchData")
     .addItem("Run Demo", "runSample")
+    .addItem("Initialize GRAX Snapshot & Search Tabs", "setupSample")
     .addItem("GRAX Documentation", "documentationPopUp")
     .addToUi();
+  //}
 }
 
 function displayAlert(message) {
@@ -316,9 +318,11 @@ function addColumn(array, columnIndex, value) {
 }
 
 function runSample(){
-  setupSample();
-  refreshAllSnapshots();
-  refreshAllSearchData();
+  if (validateSetup()){
+    setupSample();
+    refreshAllSnapshots();
+    // refreshAllSearchData();
+  }
 }
 
 function setupSample(){
@@ -363,6 +367,18 @@ function initializeSampleFields(sheetName,column,name,value){
     }
   }
   return data;
+}
+
+function validateSetup(){
+  try{
+    var getSearches = getGRAXSearches();
+    return true;
+  }catch(exception){
+    displayAlert('Setup Incomplete. Please Update App Scripts. Menu >> Extensions >> Apps Scripts. See Documentation'); 
+    var html = HtmlService.createHtmlOutput('<html></html>').setWidth( 90 ).setHeight( 1 )
+    SpreadsheetApp.getUi().showModalDialog( html, 'Setup Incomplete. Please Update App Scripts. Menu >> Extensions >> Apps Scripts. See Documentation' );
+    return false;
+  }
 }
 
 function openURL(url){
