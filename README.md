@@ -1,6 +1,6 @@
 # GRAX Salesforce Historical Snapshots in Google Sheets
 
-This demonstrates how to use GRAX Data APIs to quickly reuse Historical Salesforce data in Google Sheets for business intelligence. Salesforce has 1 version of data GRAX has a complete history of all your versions of data. Construct any snapshot report in minutes within Google Sheets and share with the entire enterprise.
+Salesforce has 1 version of data GRAX has a complete history of all your versions of data. Construct any snapshot report in minutes within Google Sheets and share with the entire enterprise. This sample demonstrates how to use GRAX to quickly consume Historical Salesforce data in Google Sheets for business intelligence. 
 
 To use:
 
