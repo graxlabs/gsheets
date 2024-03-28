@@ -97,23 +97,13 @@ function executeSearchAndWait(objectName,dateField,timeFrom,timeTo,status,filter
 function getSearchCsv(searchId,fields){
   var sUrl = APIName + 'api/v2/searches/' + searchId + '/download';
   if (fields!=null && fields!=''){
-    sUrl+='?latest=true&fields=' + fields;
+    sUrl+='?fields=' + fields;
   }
   var response = UrlFetchApp.fetch(sUrl, getHeader('get'));
   var unZippedfile = Utilities.unzip(response);
   var blob = unZippedfile[1];
   var csvData = Utilities.parseCsv(blob.getDataAsString());
   return csvData;
-}
-
-function downloadSearchData(searchId){
-  var response = null;
-  try{
-    response = UrlFetchApp.fetch(APIName + 'api/v2/searches/' + searchId + '/download?latest=true&fields=Id', getHeader('get'));
-  }catch(exception){
-    displayAlert('Exception: ' + exception.toString());
-  }
-  return response;
 }
 
 // ----------------------------------------------------------------
@@ -346,7 +336,7 @@ function setupSampleSearches(){
 function setupSampleSnapshot(){
   initializeSampleFields(SnapshotTabName,1,"Object Name","Opportunity");
   initializeSampleFields(SnapshotTabName,2,"Fields","Id,CloseDate,Amount,StageName,CreatedDate,FiscalQuarter,FiscalYear,Fiscal");
-  initializeSampleFields(SnapshotTabName,3,"Date Field","modifiedAt");
+  initializeSampleFields(SnapshotTabName,3,"Date Field","rangeLatestModifiedAt");
   initializeSampleFields(SnapshotTabName,4,"Snapshot Start Date","3/1/2023");
   initializeSampleFields(SnapshotTabName,5,"Number of Segments","12");
   initializeSampleFields(SnapshotTabName,6,"Sheet Name","SNAPSHOT_DEMO_DATA");
