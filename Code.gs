@@ -1,27 +1,67 @@
 // -------------------------------------------------
-// ************ CHANGE VALUES HERE *****************
-// APIName = GRAX Application URL (Does not matter where it is hosted)
-
-const APIName = 'https://EXAMPLE.secure.grax.io/';
-
-// APIToken = GRAX Application >> Settings >> API Token Management >> New Token
-const APIToken = '<REDACTED>';
+// *************** CONFIGURATION *******************
+//
+//          DO NOT CHANGE ANYTHING ANYMORE.
+//
+//     Google Sheets will prompt for configuration
+//
+//                    OR IN UI
+//
+//      Menu > GRAX Data > Configuration to change
+//
+// *************************************************
 // -------------------------------------------------
-
 const SnapshotTabName = 'GRAX_Snapshots';
 const SearchTabName = 'GRAX_Searches';
 const GRAXSegmentKeyName = 'Snapshot Date';
-
 var Object_Counter = 0;
-
 const timezone = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+
+function getAPIUrl(){
+  var scriptProperties = PropertiesService.getScriptProperties();
+  if (scriptProperties.getProperty('GRAX_URL')!=null)
+    return scriptProperties.getProperty('GRAX_URL');
+  else
+    return "";
+}
+
+function getToken(){
+  var scriptProperties = PropertiesService.getScriptProperties();
+  if (scriptProperties.getProperty('GRAX_TOKEN')!=null)
+    return scriptProperties.getProperty('GRAX_TOKEN');
+  else
+    return "";
+}
+
+function SetConfiguration(){
+  try {
+    var scriptProperties = PropertiesService.getScriptProperties();
+    var ui = SpreadsheetApp.getUi();
+    var urlResponse = ui.prompt('Set GRAX URL', getAPIUrl(), ui.ButtonSet.OK_CANCEL);
+    if (urlResponse.getSelectedButton() == ui.Button.OK && urlResponse.getResponseText().toString()!='') {
+      scriptProperties.setProperty('GRAX_URL', urlResponse.getResponseText().toString());
+      var tokenResponse = ui.prompt('Set GRAX Token', "**** <REDACTED> ****", ui.ButtonSet.OK_CANCEL);
+      if (tokenResponse.getSelectedButton() == ui.Button.OK && tokenResponse.getResponseText().toString()!='') {
+        scriptProperties.setProperty('GRAX_TOKEN', tokenResponse.getResponseText().toString());
+        return true;
+      }else{
+        return false;
+      }
+    } else {
+      return false;
+    }
+  } catch (err) {
+      displayAlert(err); 
+      return false;
+  }
+}
 
 function getHeader(method){
  var options = {
     'method' : method,
     'contentType': 'application/json',
     'headers': {
-      'Authorization': 'Bearer ' + APIToken
+      'Authorization': 'Bearer ' + getToken()
     }
   };
   return options;
@@ -39,7 +79,7 @@ function getReturnData(data){
 }
 
 function getAPIData(urlPath, method){
-  var response = UrlFetchApp.fetch(APIName + urlPath, getHeader(method));
+  var response = UrlFetchApp.fetch(getAPIUrl() + urlPath, getHeader(method));
   var obj = JSON.parse(response.getContentText());
   return obj;
 }
@@ -74,11 +114,10 @@ function executeSearch(objectName,dateField,timeFrom,timeTo,status,filter){
       ]
     }
   }
-
   options.payload = JSON.stringify(payload);
   Logger.log(options.payload);
   displayAlert('Retrieving GRAX History for ' + objectName + ' ' + timeFrom + ' to ' + timeTo);
-  var response = UrlFetchApp.fetch(APIName + 'api/v2/searches',options);
+  var response = UrlFetchApp.fetch(getAPIUrl() + 'api/v2/searches',options);
   var data = JSON.parse(response.getContentText());
   return data.id; 
 }
@@ -95,7 +134,7 @@ function executeSearchAndWait(objectName,dateField,timeFrom,timeTo,status,filter
 }
 
 function getSearchCsv(searchId,fields){
-  var sUrl = APIName + 'api/v2/searches/' + searchId + '/download';
+  var sUrl = getAPIUrl() + 'api/v2/searches/' + searchId + '/download';
   if (fields!=null && fields!=''){
     sUrl+='?fields=' + fields;
   }
@@ -228,17 +267,18 @@ function refreshAllGRAXData(){
 
 // Add GRAX Menu Options
 function onOpen(e) {
-  //if (validateSetup()){
+  if (validateSetup()){
     var ui = SpreadsheetApp.getUi();
     ui.createMenu("GRAX Data 🚀")
     .addItem("Refresh All GRAX Data", "refreshAllGRAXData")
     .addItem("Refresh Snapshot Data", "refreshAllSnapshots")
     .addItem("Refresh Search Data", "refreshAllSearchData")
     .addItem("Run Demo", "runSample")
+    .addItem("Configuration", "SetConfiguration")
     .addItem("Initialize GRAX Snapshot & Search Tabs", "setupSample")
     .addItem("GRAX Documentation", "documentationPopUp")
     .addToUi();
-  //}
+  }
 }
 
 function displayAlert(message) {
@@ -323,7 +363,7 @@ function setupSample(){
 
 function setupSampleSearches(){
   initializeSampleFields(SearchTabName,1,"Object Name","Opportunity");
-  initializeSampleFields(SearchTabName,2,"Fields","Id,CloseDate,Amount,StageName,CreatedDate,FiscalQuarter,FiscalYear,Fiscal");
+  initializeSampleFields(SearchTabName,2,"Fields","Id,CloseDate,Amount,StageName,CreatedDate,FiscalQuarter,FiscalYear,Fiscal,Type");
   initializeSampleFields(SearchTabName,3,"Date Min","2024-01-01T04:00:00Z");
   initializeSampleFields(SearchTabName,4,"Date Max","2024-03-18T05:00:00Z");
   initializeSampleFields(SearchTabName,5,"Date Field","modifiedAt");
@@ -335,10 +375,10 @@ function setupSampleSearches(){
 
 function setupSampleSnapshot(){
   initializeSampleFields(SnapshotTabName,1,"Object Name","Opportunity");
-  initializeSampleFields(SnapshotTabName,2,"Fields","Id,CloseDate,Amount,StageName,CreatedDate,FiscalQuarter,FiscalYear,Fiscal");
+  initializeSampleFields(SnapshotTabName,2,"Fields","Id,CloseDate,Amount,StageName,CreatedDate,Type");
   initializeSampleFields(SnapshotTabName,3,"Date Field","rangeLatestModifiedAt");
   initializeSampleFields(SnapshotTabName,4,"Snapshot Start Date","3/1/2023");
-  initializeSampleFields(SnapshotTabName,5,"Number of Segments","12");
+  initializeSampleFields(SnapshotTabName,5,"Number of Segments","24");
   initializeSampleFields(SnapshotTabName,6,"Sheet Name","SNAPSHOT_DEMO_DATA");
   initializeSampleFields(SnapshotTabName,7,"Filter Field","");
   initializeSampleFields(SnapshotTabName,8,"Filter Type","");
@@ -361,13 +401,15 @@ function initializeSampleFields(sheetName,column,name,value){
 
 function validateSetup(){
   try{
-    var getSearches = getGRAXSearches();
-    return true;
+    if (getAPIUrl()!="" && getToken()!=""){
+      return true;
+    }else{
+      return SetConfiguration();
+    }
   }catch(exception){
-    displayAlert('Setup Incomplete. Please Update App Scripts. Menu >> Extensions >> Apps Scripts. See Documentation'); 
     var html = HtmlService.createHtmlOutput('<html></html>').setWidth( 90 ).setHeight( 1 )
-    SpreadsheetApp.getUi().showModalDialog( html, 'Setup Incomplete. Please Update App Scripts. Menu >> Extensions >> Apps Scripts. See Documentation' );
-    return false;
+    SpreadsheetApp.getUi().showModalDialog( html, 'Setup Incomplete. Please Update Values.' );
+    return SetConfiguration();
   }
 }
 
