@@ -1,11 +1,15 @@
-# GRAX Salesforce Historical Snapshots in Google Sheets
+# Create Snapshot Reports Using Salesforce and Google Sheets
 
-Salesforce has 1 version of data GRAX has a complete history of all your versions of data. Construct any snapshot report in minutes within Google Sheets and share with the entire enterprise. This sample demonstrates how to use GRAX to quickly consume Historical Salesforce data in Google Sheets for business intelligence. 
+If you've been searching for a Google Sheets integration with Salesforce to analyze your past for better future outcomes, you’re in the right place. With GRAX, you can construct any type of historical Salesforce snapshot report in minutes within Google Sheets that’s sharable across the entire enterprise. 
 
-To use:
+This tool captures and stores all historical Salesforce data in Google Sheets, giving you full control and compliance. Only with GRAX can you preserve every version of Salesforce data to consume it the analytics, AI/ML, or BI tools of choic. Say goodbye to the hassle of data exports and hello to the ease of syncing salesforce object data - sales, service, or other important data. 
 
-- [Get GRAX](https://grax.com), [connect to Salesforce](https://documentation.grax.com/docs/connecting-salesforce), and [start the data collector](https://documentation.grax.com/docs/auto-backup)
-- Log into the web app and generate a [public API key](https://documentation.grax.com/docs/public-api)
+Use this sample and the directions below to experience downstream data consumption of Salesforce data in Google Sheets for more precise business intelligence.
+
+## Directions:
+
+- [Get GRAX](https://www.grax.com/trial/?utm_medium=referral&utm_source=github&utm_campaign=gsheet), [connect to Salesforce](https://documentation.grax.com/docs/connecting-salesforce?utm_medium=referral&utm_source=github&utm_campaign=gsheet), and [start the data collector](https://documentation.grax.com/docs/auto-backup?utm_medium=referral&utm_source=github&utm_campaign=gsheet)
+- Log into [GRAX](https://platform.grax.com/?utm_medium=referral&utm_source=github&utm_campaign=gsheet) and generate a [public API key](https://documentation.grax.com/docs/public-api?utm_medium=referral&utm_source=github&utm_campaign=gsheet)
 - Clone this -> [Sample Google Sheet](https://docs.google.com/spreadsheets/d/1MbdocT6b1sB65HhmepzTgpNxCcg0KcyICZ5U6sPz_t4/edit#gid=514958285)
     - Click Menu ```File```
     - Select ```Make a copy```
@@ -23,3 +27,6 @@ To use:
     - Click ```Run Demo```
 - Click Run and see your Google Sheet populated with the Historical Opportunity data
 
+By utilizing GRAX for data lifecycle management you have created a complete historical repository of all versions of data in your cloud (AWS, Azure, GCP, other clouds, or on-prem), while Salesforce has only one version of data. With GRAX, you can streamline data collection, automate data streaming, and generate actionable insights quickly and efficiently. This can help your team make informed decisions, identify trends and patterns, and ultimately drive better business outcomes. 
+
+[Watch our how-to video](https://www.grax.com/blog/how-to-pull-data-from-salesforce-to-google-sheets/?utm_medium=referral&utm_source=github&utm_campaign=gsheet) to see firsthand how GRAX can transform the way your team works with customer data and Salesforce reports.
